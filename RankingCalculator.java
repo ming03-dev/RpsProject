@@ -1,4 +1,4 @@
-package javaFund.gbbProject;
+package RpsProject;
 
 public class RankingCalculator {
 

@@ -1,5 +1,9 @@
-package javaFund.gbbProject;
+package RpsProject;
 
 public interface MemberService {
-
+	
+	boolean signUp(User newUser); // 회원가입
+    boolean login(User newUser); // 로그인
+	void logout(); // 로그아웃
+    void changePassword(); // 비밀번호 변경
 }
