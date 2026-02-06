@@ -1,22 +1,25 @@
 package RpsProject;
 
+import java.util.Scanner;
+
 public class GameController {
 	public static void main(String[] args) {
 
 		UserInput userInput = new UserInput();
-		MemberServiceImpl memberService = new MemberServiceImpl();
-		GameServiceImp gameService = new GameServiceImp();
-		RecordServiceImpl recordService = new RecordServiceImpl();
-		RecordRepository recordRepo = new RecordRepository();
-		
-		String email = null, password = null;
-		User newUser = new User(email, password);
-		
-		// 게임 시작 후 불러옴.
-		recordRepo.membersLoad(); // 회원 정보
-		recordRepo.recordsLoad(); // 전적 기록
+		Scanner sc = new Scanner(System.in);
 
-		while (true) {
+		RecordRepository recordRepo = new RecordRepository();
+		recordRepo.membersLoad();
+		recordRepo.recordsLoad();
+
+		MemberServiceImpl memberService = new MemberServiceImpl(recordRepo);
+		RecordServiceImpl recordService = new RecordServiceImpl(recordRepo);
+
+		GameServiceImp gameService = null; // 로그인 성공 후 생성
+		User currentUser = null; // 로그인한 유저
+
+		// 1. 시작 메뉴
+		while (currentUser == null) {
 			// 시작 메뉴 출력
 			System.out.println("========================================\n");
 			System.out.println("가위바위보 게임에 오신걸 환영합니다.\n");
@@ -24,66 +27,91 @@ public class GameController {
 			System.out.println("========================================\n");
 
 			userInput.isInputStartMenu();
-			switch (userInput.input) {
-			case 1: // 로그인
-				if((memberService.login(newUser) == true)){
-					break;
-				} else continue; 
 
-			case 2: // 회원가입
-				while (true) {
-					email = userInput.inputEmail();
-					password = userInput.inputPassword();
-					
-					// MemberServiceImpl에 검증된 아이디, 비번 보내기
-					if ((memberService.signUp(newUser) == true)) {
-						System.out.println("회원가입이 완료되었습니다.");
-						break;
-					} else {
-						continue;
-					}
+			switch (userInput.input) {
+			case 1: { // 로그인
+				String email = userInput.inputLoginEmail();
+				String password = userInput.inputLoginPassword();
+				User loginUser = new User(email, password);
+
+				boolean sucess = memberService.login(loginUser);
+				if (sucess) {
+					// Map 안 실제 유저 객체 가져와서 lastLogin 포함된 상태로 출력
+					currentUser = memberService.getUser(email);
+
+					// 로그인 성공 후에만 gameService 생성
+					gameService = new GameServiceImp(recordService, currentUser, sc);
+
+					// 환영 + 마지막 로그인 출력
+					userInput.showWelcomeMessage(currentUser, memberService.getLastLoginBeforeUpdate());
+
+				} else {
+					System.out.println("가입한 유저가 아닙니다. 다시 시도해 주세요.\n");
 				}
-				break;
-			default:
-				userInput.isInputStartMenu();
 				break;
 			}
 
-			// 로그인 성공 시 lastLogin 출력
-			System.out.println("========================================\n");
-			System.out.println("님 환영합니다.");
-			System.out.println("마지막으로 접속하신 시간은 " + " 입니다.\n");
-			System.out.println("========================================");
+			case 2: { // 회원가입
+				String newEmail = userInput.inputEmail();
+				String newPassword = userInput.inputPassword();
+				User newUser = new User(newEmail, newPassword);
 
-			// 메인 메뉴(1~5)
-//			System.out.println("========================================\n");
-//			System.out.println("아래 메뉴 중 하나를 선택하세요.\n");
-//			System.out.println("로그아웃(1)   게임시작(2)   내 전적 보기(3)   전체 랭킹 보기(4)   비번 변경하기(5)\n");
-//			System.out.println("========================================");
-//			System.out.print("당신의 선택은? ");
-//		int input2 = sc.nextInt();
-
-//		switch (input2) {
-//		case 1:
-//			memberService.logout();
-//			break;
-//		case 2:
-//			gameService.startGame();
-//			;
-//			break;
-//		case 3:
-//			recordRepository.showMyRecord();
-//			;
-//			break;
-//		case 4:
-//			recordRepository.showRanking(true);
-//			break; // 오름차순
-//		case 5:
-//			memberService.changePassword();
-//			break;
-//		}
-
+				boolean sucess = memberService.signUp(newUser);
+				if (sucess) {
+					System.out.println("회원가입이 완료되었습니다. 이제 로그인 해주세요.\n");
+				}
+				break;
+			}
+			default:
+				System.out.println("메뉴 확인 후 다시 입력해 주세요.\n");
+				break;
+			}
 		}
 
+		// 2. 메인 메뉴
+		while (true) {
+
+			// 메인 메뉴(1~5)
+			System.out.println("========================================\n");
+			System.out.println("아래 메뉴 중 하나를 선택하세요.\n");
+			System.out.println("로그아웃(1)   게임시작(2)   내 전적 보기(3)   전체 랭킹 보기(4)   비번 변경하기(5)\n");
+			System.out.println("========================================");
+			System.out.println();
+
+			userInput.isInputMainMenu();
+
+			switch (userInput.input2) {
+			case 1: // 로그아웃 = 프로그램 종료
+				memberService.logout();
+				System.out.println("로그아웃 되었습니다.\n프로그램을 종료합니다.");
+				return;
+
+			case 2: // 게임 시작
+				if (gameService == null) {
+                    System.out.println("로그인 후 이용 가능합니다.\n");
+                    break;
+                }
+                gameService.startGame();
+                break;
+
+			case 3:
+				System.out.println("내 전적 보기");
+				recordService.showMyRecord(currentUser);
+				break;
+
+			case 4:
+				System.out.println("전체 랭킹 보기");
+				recordService.showRanking(false); // 내림차순 보기
+				break;
+
+			case 5: // 비밀번호 변경
+				memberService.changePassword(currentUser, userInput);
+				break;
+
+			default:
+				System.out.println("메뉴 확인 후 다시 입력해 주세요.\n");
+				break;
+			}
+		}
 	}
 }

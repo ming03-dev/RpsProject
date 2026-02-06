@@ -38,11 +38,11 @@ public class User {
 		this.win = win;
 	}
 
-	public int getLost() {
+	public int getLose() {
 		return lose;
 	}
 
-	public void setLost(int lose) {
+	public void setLose(int lose) {
 		this.lose = lose;
 	}
 
